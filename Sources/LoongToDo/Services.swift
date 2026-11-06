@@ -51,18 +51,18 @@ final class CalendarService: ObservableObject {
     func refresh(day: Date) {
         if isDemo {
             isConnected = true
-            calendars = [CalendarChoice(id: "demo", title: "个人", source: "预览", color: .systemIndigo)]
+            calendars = [CalendarChoice(id: "demo", title: "个人", source: "预览", color: BrandArtwork.ribbonColor)]
             let start = Calendar.current.startOfDay(for: day)
             events = [
-                AgendaEvent(id: "demo1", title: "留一点时间，专注创作", start: start.addingTimeInterval(10 * 3600), end: start.addingTimeInterval(11 * 3600), allDay: false, location: "", calendarTitle: "个人", color: .systemIndigo, recurring: true),
-                AgendaEvent(id: "demo2", title: "出门走走，给灵感充电", start: start.addingTimeInterval(16 * 3600), end: start.addingTimeInterval(16.5 * 3600), allDay: false, location: "公园", calendarTitle: "个人", color: .systemOrange, recurring: false)
+                AgendaEvent(id: "demo1", title: "留一点时间，专注创作", start: start.addingTimeInterval(10 * 3600), end: start.addingTimeInterval(11 * 3600), allDay: false, location: "", calendarTitle: "个人", color: BrandArtwork.ribbonColor, recurring: true),
+                AgendaEvent(id: "demo2", title: "出门走走，给灵感充电", start: start.addingTimeInterval(16 * 3600), end: start.addingTimeInterval(16.5 * 3600), allDay: false, location: "公园", calendarTitle: "个人", color: BrandArtwork.foldColor, recurring: false)
             ]
             return
         }
         isConnected = EKEventStore.authorizationStatus(for: .event) == .fullAccess
         guard isConnected else { calendars = []; events = []; return }
         calendars = store.calendars(for: .event).filter(\.allowsContentModifications).map {
-            CalendarChoice(id: $0.calendarIdentifier, title: $0.title, source: $0.source.title, color: NSColor(cgColor: $0.cgColor) ?? .systemIndigo)
+            CalendarChoice(id: $0.calendarIdentifier, title: $0.title, source: $0.source.title, color: NSColor(cgColor: $0.cgColor) ?? BrandArtwork.ribbonColor)
         }
         let start = Calendar.current.startOfDay(for: day)
         let end = Calendar.current.date(byAdding: .day, value: 1, to: start)!
@@ -71,7 +71,7 @@ final class CalendarService: ObservableObject {
             AgendaEvent(id: "\(event.eventIdentifier ?? "event")-\(event.startDate.timeIntervalSince1970)-\(index)",
                         title: event.title ?? "未命名日程", start: event.startDate, end: event.endDate,
                         allDay: event.isAllDay, location: event.location ?? "", calendarTitle: event.calendar.title,
-                        color: NSColor(cgColor: event.calendar.cgColor) ?? .systemIndigo, recurring: event.hasRecurrenceRules)
+                        color: NSColor(cgColor: event.calendar.cgColor) ?? BrandArtwork.ribbonColor, recurring: event.hasRecurrenceRules)
         }
     }
 

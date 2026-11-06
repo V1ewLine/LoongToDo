@@ -40,69 +40,21 @@ struct DayInspector: View {
 
 struct MonthCard: View {
     @ObservedObject var store: AppStore
-    @State private var month = Date()
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Namespace private var selection
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 3), count: 7)
-    private var days: [Date] {
-        let calendar = Calendar.current
-        let first = calendar.date(from: calendar.dateComponents([.year, .month], from: month))!
-        let leading = (calendar.component(.weekday, from: first) + 5) % 7
-        let start = calendar.date(byAdding: .day, value: -leading, to: first)!
-        return (0..<42).map { calendar.date(byAdding: .day, value: $0, to: start)! }
-    }
     var body: some View {
         let dueDays = Set(store.todos.compactMap { todo -> Date? in
             guard !todo.isCompleted, let due = todo.dueDate else { return nil }
             return Calendar.current.startOfDay(for: due)
         })
-        VStack(spacing: 20) {
-            HStack {
-                Text(DateText.string(month, "yyyy年 M月")).font(.system(size: 14, weight: .semibold))
-                Spacer()
-                Button { shift(-1) } label: { Image(systemName: "chevron.left").frame(width: 25, height: 25).background(Style.accentSoft.opacity(0.09), in: Circle()) }.help("上个月")
-                Button { shift(1) } label: { Image(systemName: "chevron.right").frame(width: 25, height: 25).background(Style.accentSoft.opacity(0.09), in: Circle()) }.help("下个月")
-            }.buttonStyle(ElasticButtonStyle()).font(.system(size: 10, weight: .semibold))
-            LazyVGrid(columns: columns, spacing: 7) {
-                ForEach(Array(["一", "二", "三", "四", "五", "六", "日"].enumerated()), id: \.offset) { _, day in
-                    Text(day).font(.system(size: 9)).foregroundStyle(.tertiary).frame(height: 20)
-                }
-                ForEach(days, id: \.self) { day in dayCell(day, hasDue: dueDays.contains(day)) }
-            }
+        VStack(spacing: 18) {
+            MonthCalendar(selection: $store.selectedDay, markedDays: dueDays, compact: true)
             HStack(spacing: 5) {
-                Circle().fill(Style.accentSoft).frame(width: 4, height: 4)
-                Text("有待办截止").font(.system(size: 9)).foregroundStyle(.tertiary)
+                Circle().fill(Style.orangeFill).frame(width: 4, height: 4)
+                Text("有待办截止").font(.system(size: 9)).foregroundStyle(.secondary)
                 Spacer()
-                Button("回到今天") { month = Date(); store.selectedDay = Date() }.buttonStyle(ElasticButtonStyle()).font(.system(size: 10)).foregroundStyle(Style.accent)
+                Button("回到今天") { store.selectedDay = Date() }
+                    .buttonStyle(ElasticButtonStyle()).font(.system(size: 10, weight: .medium)).foregroundStyle(Style.orange)
             }
         }.padding(20).glassPanel(radius: 22)
-            .onChange(of: store.selectedDay) { _, day in
-                if !Calendar.current.isDate(day, equalTo: month, toGranularity: .month) { month = day }
-            }
-    }
-    private func shift(_ offset: Int) { month = Calendar.current.date(byAdding: .month, value: offset, to: month)! }
-    private func dayCell(_ day: Date, hasDue: Bool) -> some View {
-        let cal = Calendar.current
-        let selected = cal.isDate(day, inSameDayAs: store.selectedDay)
-        let today = cal.isDateInToday(day)
-        let inMonth = cal.isDate(day, equalTo: month, toGranularity: .month)
-        return Button { store.selectedDay = day } label: {
-            VStack(spacing: 2) {
-                Text("\(cal.component(.day, from: day))").font(.system(size: 11, weight: selected || today ? .semibold : .regular, design: .rounded))
-                Circle().fill(hasDue ? (selected ? Color.white : Style.accentSoft) : .clear).frame(width: 3, height: 3)
-            }.frame(maxWidth: .infinity).frame(height: 28)
-                .foregroundStyle(selected ? .white : inMonth ? Color.primary.opacity(0.8) : Color.secondary.opacity(0.3))
-                .background {
-                    if selected {
-                        RoundedRectangle(cornerRadius: 10).fill(Style.accentFill.gradient)
-                            .shadow(color: Style.accent.opacity(0.23), radius: 4, y: 3)
-                            .matchedGeometryEffect(id: "selected-day", in: selection)
-                    }
-                }
-                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(today && !selected ? Style.accent.opacity(0.45) : .clear))
-        }.buttonStyle(ElasticButtonStyle(pressedScale: 0.82, hoverScale: 1.08))
-            .animation(reduceMotion ? nil : Motion.release, value: store.selectedDay)
-            .accessibilityLabel(DateText.string(day, "yyyy年M月d日") + (hasDue ? "，有待办截止" : "")).accessibilityAddTraits(selected ? [.isSelected] : [])
     }
 }
 

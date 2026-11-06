@@ -69,6 +69,31 @@ final class TodoCoreTests {
         draft.interval = 1; draft.calendarID = ""
         expectThrows(try draft.validated())
     }
+    func testCalendarGridIncludesLeapDayAndUsesWholeDaysAcrossDST() {
+        let leapGrid = DateSelection.monthDays(containing: date(2028, 2, 20), calendar: calendar)
+        expectEqual(leapGrid.count, 42)
+        expectEqual(calendar.component(.weekday, from: leapGrid[0]), 2)
+        expectTrue(leapGrid.contains(date(2028, 2, 29, 0)))
+        let springGrid = DateSelection.monthDays(containing: date(2026, 3, 31), calendar: calendar)
+        expectEqual(Set(springGrid).count, 42)
+        expectTrue(springGrid.allSatisfy { calendar.component(.hour, from: $0) == 0 })
+        expectTrue(springGrid.contains(date(2026, 3, 8, 0)))
+        expectTrue(springGrid.contains(date(2026, 3, 9, 0)))
+    }
+    func testDateControlsPreserveLocalTimeAndNormalizeMissingDSTHour() {
+        let before = calendar.date(from: DateComponents(year: 2026, month: 3, day: 7, hour: 9, minute: 45))!
+        let selected = DateSelection.replacingDay(in: before, with: date(2026, 3, 8), calendar: calendar)
+        expectEqual(calendar.component(.day, from: selected), 8)
+        expectEqual(calendar.component(.hour, from: selected), 9)
+        expectEqual(calendar.component(.minute, from: selected), 45)
+        expectEqual(selected.timeIntervalSince(before), 23 * 3600)
+        let missingHour = DateSelection.replacingTime(in: selected, hour: 2, minute: 30, calendar: calendar)
+        expectEqual(missingHour, date(2026, 3, 8, 3))
+        let endOfDay = DateSelection.replacingTime(in: selected, hour: 23, minute: 59, calendar: calendar)
+        expectEqual(calendar.component(.day, from: endOfDay), 8)
+        expectEqual(calendar.component(.hour, from: endOfDay), 23)
+        expectEqual(calendar.component(.minute, from: endOfDay), 59)
+    }
 }
 
 private func expectTrue(_ value: Bool, file: StaticString = #filePath, line: UInt = #line) {
@@ -99,7 +124,9 @@ struct CheckRunner {
             ("disk persistence and corruption", tests.testRepositoryPersistsEveryFieldAndDoesNotSilentlyResetCorruptData),
             ("all-day DST semantics", tests.testAllDayEventUsesExclusiveEndAcrossDaylightSaving),
             ("inclusive recurrence end", tests.testRepeatUntilIncludesLastDayAndRejectsEarlierDay),
-            ("event validation", tests.testInvalidEventsAreRejectedBeforeCalendarWrite)
+            ("event validation", tests.testInvalidEventsAreRejectedBeforeCalendarWrite),
+            ("calendar grid leap day and DST", tests.testCalendarGridIncludesLeapDayAndUsesWholeDaysAcrossDST),
+            ("date controls preserve wall-clock time", tests.testDateControlsPreserveLocalTimeAndNormalizeMissingDSTHour)
         ]
         for (name, test) in cases { try test(); print("PASS: \(name)") }
         print("All \(cases.count) checks passed.")

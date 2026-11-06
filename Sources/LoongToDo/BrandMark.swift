@@ -3,11 +3,28 @@ import AppKit
 
 /// One vector master for the sidebar, exported artwork, and every Dock icon size.
 enum BrandArtwork {
-    static let topColor = NSColor(srgbRed: 0.57, green: 0.56, blue: 0.88, alpha: 1)
-    static let bottomColor = NSColor(srgbRed: 0.25, green: 0.33, blue: 0.70, alpha: 1)
+    // Palette C: white tile, midnight-blue ribbon, bright-orange page tip.
+    static let surfaceHex = "#FFFFFF"
+    static let ribbonHex = "#273651"
+    static let foldHex = "#FF984F"
+    static let borderHex = "#E7E8ED"
+    static let surfaceColor = color(surfaceHex)
+    static let ribbonColor = color(ribbonHex)
+    static let foldColor = color(foldHex)
+    static let borderColor = color(borderHex)
+
+    private static func color(_ hex: String) -> NSColor {
+        let value = UInt32(hex.dropFirst(), radix: 16)!
+        return NSColor(srgbRed: CGFloat((value >> 16) & 255) / 255,
+                       green: CGFloat((value >> 8) & 255) / 255,
+                       blue: CGFloat(value & 255) / 255, alpha: 1)
+    }
 
     private static func opticallySized(_ path: CGPath) -> CGPath {
-        var transform = CGAffineTransform(translationX: -61.44, y: -61.44).scaledBy(x: 1.12, y: 1.12)
+        // Enlarge the solid silhouette to reduce whitespace inside the white tile.
+        let scale: CGFloat = 1.26
+        let inset = 512 * (1 - scale)
+        var transform = CGAffineTransform(translationX: inset, y: inset).scaledBy(x: scale, y: scale)
         return path.copy(using: &transform)!
     }
 
@@ -16,11 +33,11 @@ enum BrandArtwork {
         let path = CGMutablePath()
         path.move(to: CGPoint(x: 294, y: 315))
         path.addCurve(to: CGPoint(x: 340, y: 269), control1: CGPoint(x: 294, y: 289), control2: CGPoint(x: 314, y: 269))
-        path.addLine(to: CGPoint(x: 398, y: 269))
-        path.addCurve(to: CGPoint(x: 444, y: 315), control1: CGPoint(x: 424, y: 269), control2: CGPoint(x: 444, y: 289))
-        path.addLine(to: CGPoint(x: 444, y: 548))
-        path.addCurve(to: CGPoint(x: 500, y: 610), control1: CGPoint(x: 444, y: 588), control2: CGPoint(x: 462, y: 610))
-        path.addCurve(to: CGPoint(x: 566, y: 577), control1: CGPoint(x: 524, y: 610), control2: CGPoint(x: 544, y: 600))
+        path.addLine(to: CGPoint(x: 428, y: 269))
+        path.addCurve(to: CGPoint(x: 474, y: 315), control1: CGPoint(x: 454, y: 269), control2: CGPoint(x: 474, y: 289))
+        path.addLine(to: CGPoint(x: 474, y: 548))
+        path.addCurve(to: CGPoint(x: 512, y: 590), control1: CGPoint(x: 474, y: 576), control2: CGPoint(x: 488, y: 590))
+        path.addCurve(to: CGPoint(x: 566, y: 565), control1: CGPoint(x: 534, y: 590), control2: CGPoint(x: 548, y: 584))
         path.addLine(to: CGPoint(x: 672, y: 465))
         path.addCurve(to: CGPoint(x: 704, y: 464), control1: CGPoint(x: 681, y: 455), control2: CGPoint(x: 695, y: 455))
         path.addLine(to: CGPoint(x: 771, y: 523))
@@ -34,13 +51,13 @@ enum BrandArtwork {
 
     static let fold: CGPath = {
         let path = CGMutablePath()
-        path.move(to: CGPoint(x: 566, y: 577))
+        path.move(to: CGPoint(x: 566, y: 565))
         path.addLine(to: CGPoint(x: 672, y: 465))
         path.addCurve(to: CGPoint(x: 704, y: 464), control1: CGPoint(x: 681, y: 455), control2: CGPoint(x: 695, y: 455))
         path.addLine(to: CGPoint(x: 771, y: 523))
         path.addCurve(to: CGPoint(x: 773, y: 555), control1: CGPoint(x: 781, y: 532), control2: CGPoint(x: 782, y: 546))
         path.addCurve(to: CGPoint(x: 665, y: 598), control1: CGPoint(x: 748, y: 578), control2: CGPoint(x: 709, y: 606))
-        path.addCurve(to: CGPoint(x: 566, y: 577), control1: CGPoint(x: 629, y: 592), control2: CGPoint(x: 595, y: 578))
+        path.addCurve(to: CGPoint(x: 566, y: 565), control1: CGPoint(x: 629, y: 592), control2: CGPoint(x: 595, y: 566))
         path.closeSubpath()
         return opticallySized(path)
     }()
@@ -61,10 +78,13 @@ struct BrandLogo: View {
         GeometryReader { proxy in
             ZStack {
                 RoundedRectangle(cornerRadius: proxy.size.width * 0.25, style: .continuous)
-                    .fill(LinearGradient(colors: [Color(nsColor: BrandArtwork.topColor), Color(nsColor: BrandArtwork.bottomColor)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                BrandShape().fill(.white)
-                BrandShape(folded: true)
-                    .fill(LinearGradient(colors: [Color(red: 0.91, green: 0.92, blue: 1), Color(red: 0.70, green: 0.77, blue: 0.98)], startPoint: .topTrailing, endPoint: .bottomLeading))
+                    .fill(Color(nsColor: BrandArtwork.surfaceColor))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: proxy.size.width * 0.25, style: .continuous)
+                            .strokeBorder(Color(nsColor: BrandArtwork.borderColor), lineWidth: 0.5)
+                    }
+                BrandShape().fill(Color(nsColor: BrandArtwork.ribbonColor))
+                BrandShape(folded: true).fill(Color(nsColor: BrandArtwork.foldColor))
             }
         }.aspectRatio(1, contentMode: .fit).accessibilityHidden(true)
     }

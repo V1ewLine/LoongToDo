@@ -33,12 +33,12 @@ struct ProgressBubble: View {
     var body: some View {
         ZStack {
             Circle()
-                .fill(RadialGradient(colors: [.white.opacity(scheme == .dark ? 0.15 : 0.95), Style.accentSoft.opacity(0.28)], center: .topLeading, startRadius: 0, endRadius: 110))
-                .overlay(Circle().strokeBorder(.white.opacity(0.65), lineWidth: 1.5))
-                .shadow(color: Style.accent.opacity(0.13), radius: 14, x: 0, y: 9)
+                .fill(Style.orangeTint)
+                .overlay(Circle().strokeBorder(Style.orangeFill.opacity(0.15), lineWidth: 1))
+                .shadow(color: .black.opacity(0.025), radius: 8, x: 0, y: 4)
             Circle().stroke(Style.accent.opacity(0.08), lineWidth: 5).padding(10)
             Circle().trim(from: 0, to: progress)
-                .stroke(AngularGradient(colors: [Style.accentSoft, Style.accent], center: .center, startAngle: .zero, endAngle: .degrees(360)), style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                .stroke(Style.orangeFill, style: StrokeStyle(lineWidth: 5, lineCap: .round))
                 .rotationEffect(.degrees(-90)).padding(10)
                 .animation(reduceMotion ? nil : Motion.layout, value: progress)
             VStack(spacing: 3) {

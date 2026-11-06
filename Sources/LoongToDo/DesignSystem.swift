@@ -1,15 +1,26 @@
 import SwiftUI
 
 enum Style {
-    static let accent = Color(nsColor: NSColor(name: nil) { appearance in
-        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-            ? NSColor(red: 0.66, green: 0.72, blue: 0.98, alpha: 1)
-            : NSColor(red: 0.29, green: 0.36, blue: 0.73, alpha: 1)
-    })
-    static let accentFill = Color(red: 0.29, green: 0.36, blue: 0.73)
-    static let accentSoft = Color(red: 0.57, green: 0.64, blue: 0.90)
-    static let orange = Color(red: 0.79, green: 0.44, blue: 0.24)
-    static let ink = Color.primary
+    static let accent = adaptive(0x273651, 0xE2EAF6)
+    static let accentFill = Color(nsColor: BrandArtwork.ribbonColor)
+    static let accentSoft = adaptive(0x687B96, 0x9AACC5)
+    static let orangeFill = Color(nsColor: BrandArtwork.foldColor)
+    static let orange = adaptive(0xA84C0B, 0xFFB47F)
+    static let orangeTint = adaptive(0xFFF0E3, 0x3D2F29)
+    static let ink = accent
+    static let canvas = adaptive(0xF5F6F8, 0x141C29)
+    static let surface = adaptive(0xFFFFFF, 0x202B3D)
+    static let surfaceMuted = adaptive(0xF1F3F6, 0x29364A)
+    static let border = adaptive(0xE4E8EE, 0x3B485D)
+
+    private static func adaptive(_ light: UInt32, _ dark: UInt32) -> Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            let hex = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
+            return NSColor(srgbRed: CGFloat((hex >> 16) & 255) / 255,
+                           green: CGFloat((hex >> 8) & 255) / 255,
+                           blue: CGFloat(hex & 255) / 255, alpha: 1)
+        })
+    }
 }
 
 enum Motion {
@@ -24,42 +35,23 @@ enum Motion {
 }
 
 struct AuroraBackground: View {
-    @Environment(\.colorScheme) var scheme
     var body: some View {
-        GeometryReader { proxy in
-            ZStack {
-                (scheme == .dark ? Color(red: 0.09, green: 0.10, blue: 0.15) : Color(red: 0.95, green: 0.96, blue: 0.98))
-                // Soft falloffs without large offscreen Gaussian-blur passes.
-                RadialGradient(colors: [Style.accentSoft.opacity(0.30), .clear], center: .topTrailing, startRadius: 0, endRadius: proxy.size.width * 0.9)
-                RadialGradient(colors: [Color(red: 0.75, green: 0.69, blue: 0.91).opacity(0.22), .clear], center: .bottomLeading, startRadius: 0, endRadius: proxy.size.width * 0.65)
-                RadialGradient(colors: [.white.opacity(scheme == .dark ? 0.025 : 0.50), .clear], center: .bottom, startRadius: 0, endRadius: proxy.size.height * 0.75)
-            }
-        }.ignoresSafeArea().allowsHitTesting(false)
+        Style.canvas.ignoresSafeArea().allowsHitTesting(false)
     }
 }
 
 struct GlassSurface: ViewModifier {
     var radius: CGFloat = 22
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.colorScheme) private var scheme
     func body(content: Content) -> some View {
         content
             .background {
-                if reduceTransparency {
-                    RoundedRectangle(cornerRadius: radius).fill(Color(nsColor: .windowBackgroundColor))
-                } else {
-                    // Cards use a translucent tint, avoiding a live backdrop filter per row.
-                    // Shadow only the stable surface shape, never its text or controls.
-                    RoundedRectangle(cornerRadius: radius, style: .continuous)
-                        .fill(LinearGradient(colors: scheme == .dark
-                            ? [Color(red: 0.17, green: 0.19, blue: 0.27).opacity(0.95), Color(red: 0.13, green: 0.15, blue: 0.22).opacity(0.9)]
-                            : [.white.opacity(0.72), .white.opacity(0.36)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                        .shadow(color: .black.opacity(scheme == .dark ? 0.15 : 0.045), radius: 9, x: 0, y: 5)
-                }
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .fill(Style.surface)
+                    .shadow(color: .black.opacity(0.025), radius: 8, x: 0, y: 4)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .strokeBorder(LinearGradient(colors: [.white.opacity(scheme == .dark ? 0.22 : 0.95), .white.opacity(0.12), .white.opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
+                    .strokeBorder(Style.border, lineWidth: 1).allowsHitTesting(false)
             }
     }
 }
@@ -67,37 +59,25 @@ struct GlassSurface: ViewModifier {
 extension View {
     func glassPanel(radius: CGFloat = 22) -> some View { modifier(GlassSurface(radius: radius)) }
     func floatingCard(radius: CGFloat = 22) -> some View { modifier(FloatingCard(radius: radius)) }
-    @ViewBuilder func liquidControl() -> some View {
-        #if compiler(>=6.2)
-        if #available(macOS 26.0, *) {
-            self.glassEffect(.regular.interactive(), in: .capsule)
-        } else {
-            self.glassPanel(radius: 30)
-        }
-        #else
-        self.glassPanel(radius: 30)
-        #endif
-    }
+    func liquidControl() -> some View { self.glassPanel(radius: 30) }
 }
 
 struct SoftButtonStyle: ButtonStyle {
     var prominent = false
     @Environment(\.isEnabled) private var enabled
-    @Environment(\.colorScheme) private var scheme
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 13, weight: .semibold, design: .rounded))
+            .font(.system(size: 13, weight: .semibold))
             .padding(.horizontal, 18).padding(.vertical, 12)
-            .foregroundStyle(prominent ? Color.white : Color.primary)
+            .foregroundStyle(prominent ? Color.white : Style.ink)
             .background {
-                Capsule().fill(LinearGradient(colors: prominent
-                    ? [Style.accentFill.opacity(0.88), Style.accentFill]
-                    : [Color.white.opacity(scheme == .dark ? 0.12 : 0.85), Color.white.opacity(scheme == .dark ? 0.05 : 0.3)], startPoint: .top, endPoint: .bottom))
-                    .shadow(color: (prominent ? Style.accent : .black).opacity(enabled ? (prominent ? 0.18 : 0.05) : 0), radius: 6, x: 0, y: 4)
+                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    .fill(prominent ? Style.accentFill : Style.surface)
+                    .shadow(color: .black.opacity(prominent && enabled ? 0.10 : 0), radius: 6, x: 0, y: 3)
             }
-            .overlay(Capsule().strokeBorder(.white.opacity(prominent ? 0.3 : 0.5)))
+            .overlay(RoundedRectangle(cornerRadius: 13).strokeBorder(prominent ? Color.clear : Style.border))
             .opacity(enabled ? 1 : 0.4)
-            .modifier(SpringInteraction(isPressed: configuration.isPressed, pressedScale: 0.92, hoverScale: 1.035))
+            .modifier(SpringInteraction(isPressed: configuration.isPressed, pressedScale: 0.95, hoverScale: 1.02))
     }
 }
 

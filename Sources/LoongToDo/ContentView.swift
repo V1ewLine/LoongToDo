@@ -26,6 +26,7 @@ struct ContentView: View {
                 }.padding(.horizontal, 28).padding(.top, 42).padding(.bottom, 24)
             }
         }
+        .foregroundStyle(Style.ink)
         .overlay(alignment: .bottom) { ToastOverlay(message: store.toast, undo: store.undoDelete).padding(.bottom, 26) }
         .frame(minWidth: 1100, minHeight: 740)
         .sheet(item: $store.todoEditor) { todo in TodoEditor(store: store, todo: todo) }
@@ -50,7 +51,7 @@ struct ContentView: View {
     private var topBar: some View {
         HStack {
             HStack(spacing: 7) {
-                Image(systemName: "sparkle").foregroundStyle(Style.accent)
+                Image(systemName: "sparkle").foregroundStyle(Style.orange)
                 Text("少一点忙乱，多一点从容").foregroundStyle(.secondary)
             }.font(.system(size: 12, weight: .medium))
             Spacer()
@@ -97,7 +98,7 @@ struct ContentView: View {
             Spacer(minLength: 4)
             ProgressBubble(completed: store.completedToday, progress: store.progress)
         }.padding(26).frame(maxWidth: .infinity, minHeight: 158, alignment: .leading)
-            .background(LinearGradient(colors: [Style.accentSoft.opacity(0.11), .white.opacity(0.06)], startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 28))
+            .background(LinearGradient(colors: [Style.orangeFill.opacity(0.10), Style.surface], startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 28))
             .glassPanel(radius: 28)
     }
     private var heroTitle: String {
@@ -150,7 +151,7 @@ struct Sidebar: View {
             }.buttonStyle(ElasticButtonStyle(pressedScale: 0.95, hoverScale: 1.015))
             Spacer(minLength: 24)
             VStack(alignment: .leading, spacing: 10) {
-                Image(systemName: "sun.horizon").font(.system(size: 24, weight: .ultraLight)).foregroundStyle(Style.accent)
+                Image(systemName: "sun.horizon").font(.system(size: 24, weight: .light)).foregroundStyle(Style.orange)
                 Text("让计划轻一点，\n让生活多一点。").font(.system(size: 13, weight: .medium)).lineSpacing(5).fixedSize(horizontal: false, vertical: true)
                 Text("MAKE ROOM FOR LIFE").font(.system(size: 7, weight: .medium, design: .monospaced)).tracking(1.3).foregroundStyle(.tertiary)
             }.padding(18).frame(maxWidth: .infinity, alignment: .leading).glassPanel(radius: 18)
@@ -165,26 +166,23 @@ struct Sidebar: View {
                 } label: { Image(systemName: "ellipsis").foregroundStyle(.secondary) }.menuStyle(.borderlessButton).fixedSize().help("更多选项")
             }.padding(.horizontal, 9).padding(.top, 24)
         }.padding(.horizontal, 18).padding(.top, 62).padding(.bottom, 26)
-            .background {
-                if reduceTransparency { Color(nsColor: .windowBackgroundColor) }
-                else { Rectangle().fill(.ultraThinMaterial) }
-            }.overlay(alignment: .trailing) { Rectangle().fill(.white.opacity(0.35)).frame(width: 1) }
+            .background(Style.surface)
+            .overlay(alignment: .trailing) { Rectangle().fill(Style.border).frame(width: 1) }
     }
     private func navItem(_ filter: TodoFilter) -> some View {
         let selected = store.filter == filter
         return Button { store.filter = filter; store.search = "" } label: {
             HStack(spacing: 11) {
-                Image(systemName: filter.symbol).font(.system(size: 16, weight: selected ? .medium : .regular)).frame(width: 20)
+                Image(systemName: filter.symbol).font(.system(size: 16, weight: selected ? .medium : .regular)).frame(width: 20).foregroundStyle(selected ? Style.orangeFill : Style.accentSoft)
                 Text(filter.title).font(.system(size: 13, weight: selected ? .semibold : .regular))
                 Spacer()
-                if filter != .calendar { Text("\(store.count(filter))").font(.system(size: 11, weight: .medium, design: .rounded)).foregroundStyle(selected ? Style.accent : Color.secondary) }
-            }.foregroundStyle(selected ? Style.accent : Color.primary.opacity(0.7))
+                if filter != .calendar { Text("\(store.count(filter))").font(.system(size: 11, weight: .medium, design: .rounded)).foregroundStyle(selected ? Color.white.opacity(0.8) : Color.secondary) }
+            }.foregroundStyle(selected ? Color.white : Style.ink.opacity(0.78))
                 .padding(.horizontal, 14).padding(.vertical, 14)
                 .background {
                     if selected {
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(LinearGradient(colors: [Style.accentSoft.opacity(0.26), Style.accentSoft.opacity(0.12)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(.white.opacity(0.7)))
+                            .fill(Style.accentFill)
                             .shadow(color: Style.accent.opacity(0.08), radius: 6, y: 4)
                             .matchedGeometryEffect(id: "sidebar-selection", in: selection)
                     }
@@ -213,7 +211,7 @@ struct TodoRow: View {
             }.buttonStyle(ElasticButtonStyle(pressedScale: 0.78, hoverScale: 1.12)).help(todo.isCompleted ? "恢复待办" : "标记完成").accessibilityLabel(todo.isCompleted ? "恢复：\(todo.title)" : "完成：\(todo.title)")
             Button { store.todoEditor = todo } label: {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(todo.title).font(.system(size: 14, weight: .medium)).strikethrough(todo.isCompleted).foregroundStyle(todo.isCompleted ? .secondary : .primary).lineLimit(2).multilineTextAlignment(.leading)
+                    Text(todo.title).font(.system(size: 14, weight: .medium)).strikethrough(todo.isCompleted).foregroundStyle(todo.isCompleted ? Color.secondary : Style.ink).lineLimit(2).multilineTextAlignment(.leading)
                     if !todo.notes.isEmpty { Text(todo.notes).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1) }
                     HStack(spacing: 6) {
                         if let due = todo.dueDate {
@@ -252,8 +250,8 @@ struct EmptyTasks: View {
         VStack(spacing: 16) {
             ZStack {
                 Circle().fill(Style.accentSoft.opacity(0.07)).frame(width: 108, height: 108)
-                Circle().fill(LinearGradient(colors: [Style.accentSoft.opacity(0.12), Style.accentSoft.opacity(0.32)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .overlay(Circle().strokeBorder(.white.opacity(0.75), lineWidth: 1.5))
+                Circle().fill(Style.orangeTint)
+                    .overlay(Circle().strokeBorder(Style.orangeFill.opacity(0.18), lineWidth: 1))
                     .shadow(color: Style.accent.opacity(0.14), radius: 12, x: 0, y: 8).frame(width: 82, height: 82)
                 Image(systemName: searching ? "magnifyingglass" : filter == .completed ? "checkmark.seal" : "leaf").font(.system(size: 32, weight: .light)).foregroundStyle(Style.accent)
             }

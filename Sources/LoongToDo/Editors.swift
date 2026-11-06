@@ -31,14 +31,12 @@ struct TodoEditor: View {
                 TextField("添加备注，留下一点细节…", text: $todo.notes, axis: .vertical).lineLimit(3...5).font(.system(size: 13)).textFieldStyle(.plain)
             }.padding(20).glassPanel(radius: 17)
             VStack(spacing: 18) {
-                HStack { Label("重要程度", systemImage: "flag"); Spacer(); Picker("重要程度", selection: $todo.priority) { ForEach(Priority.allCases, id: \.self) { Text($0.title).tag($0) } }.labelsHidden().pickerStyle(.segmented).frame(width: 150) }
+                PriorityField(selection: $todo.priority)
                 Divider()
-                Toggle(isOn: $hasDue) { Label("设置截止日期", systemImage: "calendar.badge.clock") }.toggleStyle(.switch)
+                Toggle(isOn: $hasDue) { FormLabel(title: "设置截止日期", symbol: "calendar.badge.clock") }.toggleStyle(BrandToggleStyle())
                 if hasDue {
-                    DatePicker("截止时间", selection: $due, displayedComponents: [.date, .hourAndMinute])
-                    Picker(selection: $reminder) {
-                        Text("不提醒").tag(-1); Text("截止时").tag(0); Text("提前 5 分钟").tag(5); Text("提前 15 分钟").tag(15); Text("提前 30 分钟").tag(30); Text("提前 1 小时").tag(60); Text("提前 1 天").tag(1440)
-                    } label: { Label("提醒我", systemImage: "bell") }
+                    DateTimeField(title: "截止时间", selection: $due)
+                    ChoiceField(title: "提醒我", symbol: "bell", selection: $reminder, options: ReminderOptions.choices(atStart: "截止时"))
                 }
             }.font(.system(size: 13)).padding(20).glassPanel(radius: 17)
                 .animation(reduceMotion ? nil : Motion.layout, value: hasDue)
@@ -56,7 +54,7 @@ struct TodoEditor: View {
                     if saving { ProgressView().controlSize(.small) } else { Text("保存待办") }
                 }.keyboardShortcut(.defaultAction).buttonStyle(SoftButtonStyle(prominent: true)).disabled(saving || todo.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
-        }.padding(30).frame(width: 510).background { AuroraBackground() }.interactiveDismissDisabled(saving)
+        }.padding(28).frame(width: 560).foregroundStyle(Style.ink).background { AuroraBackground() }.interactiveDismissDisabled(saving)
             .task { titleFocused = true }
     }
     @MainActor private func save() async -> Bool {
@@ -113,36 +111,34 @@ struct EventEditor: View {
                 Button("添加到日历") { save() }.keyboardShortcut(.defaultAction).buttonStyle(SoftButtonStyle(prominent: true))
                     .disabled(saving || !calendar.isConnected || calendar.calendars.isEmpty || draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
-        }.padding(30).frame(width: 550, height: calendar.isConnected ? 730 : 360).background { AuroraBackground() }
+        }.padding(28).frame(width: 580, height: calendar.isConnected ? 710 : 360).foregroundStyle(Style.ink).background { AuroraBackground() }
             .interactiveDismissDisabled(saving)
             .task { selectDefaultCalendar(); titleFocused = true }
             .onChange(of: calendar.isConnected) { _, _ in selectDefaultCalendar() }
     }
     private var timeFields: some View {
         VStack(spacing: 16) {
-            Toggle("全天日程", isOn: $draft.allDay).toggleStyle(.switch)
-            DatePicker("开始", selection: $draft.start, displayedComponents: draft.allDay ? [.date] : [.date, .hourAndMinute])
-            DatePicker(draft.allDay ? "结束（含当天）" : "结束", selection: $draft.end, displayedComponents: draft.allDay ? [.date] : [.date, .hourAndMinute])
+            Toggle(isOn: $draft.allDay) { FormLabel(title: "全天日程", symbol: "sun.max") }.toggleStyle(BrandToggleStyle())
+            DateTimeField(title: "开始", selection: $draft.start, includesTime: !draft.allDay)
+            DateTimeField(title: draft.allDay ? "结束（含当天）" : "结束", selection: $draft.end, includesTime: !draft.allDay)
             Divider()
-            Picker("写入日历", selection: $draft.calendarID) {
-                Text("请选择日历").tag("")
-                ForEach(calendar.calendars) { item in Text("\(item.title) · \(item.source)").tag(item.id) }
-            }
+            ChoiceField(title: "写入日历", symbol: "calendar", selection: $draft.calendarID,
+                        options: calendar.calendars.map { ChoiceOption(value: $0.id, title: $0.title, subtitle: $0.source, color: Color(nsColor: $0.color)) })
             if calendar.calendars.isEmpty { Text("暂无可写日历。请先在系统日历中添加账户或创建日历，再重新打开此窗口。").font(.system(size: 11)).foregroundStyle(Style.orange) }
         }.font(.system(size: 13)).padding(19).glassPanel(radius: 17)
             .onChange(of: draft.start) { old, new in
                 if draft.end <= new { draft.end = new.addingTimeInterval(max(1800, draft.end.timeIntervalSince(old))) }
+                if Calendar.current.startOfDay(for: repeatEnd) < Calendar.current.startOfDay(for: new) { repeatEnd = new }
             }
     }
     private var repeatFields: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Picker(selection: $draft.frequency) {
-                ForEach(RepeatFrequency.allCases) { Text($0.title).tag($0) }
-            } label: { Label("重复", systemImage: "repeat") }
+            ChoiceField(title: "重复", symbol: "repeat", selection: $draft.frequency,
+                        options: RepeatFrequency.allCases.map { ChoiceOption(value: $0, title: $0.title, symbol: $0 == .none ? "minus.circle" : "repeat") })
             if draft.frequency != .none {
-                Stepper("每 \(draft.interval) \(draft.frequency.unit)重复", value: $draft.interval, in: 1...99)
-                Toggle("设置重复结束日期", isOn: $endsRepeat).toggleStyle(.switch)
-                if endsRepeat { DatePicker("重复至（含当天）", selection: $repeatEnd, in: Calendar.current.startOfDay(for: draft.start)..., displayedComponents: [.date]) }
+                IntervalField(value: $draft.interval, unit: draft.frequency.unit)
+                Toggle("设置重复结束日期", isOn: $endsRepeat).toggleStyle(BrandToggleStyle())
+                if endsRepeat { DateTimeField(title: "重复至（含当天）", selection: $repeatEnd, includesTime: false, minimum: Calendar.current.startOfDay(for: draft.start)) }
                 if draft.frequency == .monthly {
                     Text("每月按开始日期的日号重复；没有该日期的月份将跳过。").font(.system(size: 10)).foregroundStyle(.secondary)
                 }
@@ -153,9 +149,7 @@ struct EventEditor: View {
     }
     private var detailFields: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Picker("日历提醒", selection: $alarm) {
-                Text("不提醒").tag(-1); Text("开始时").tag(0); Text("提前 5 分钟").tag(5); Text("提前 15 分钟").tag(15); Text("提前 30 分钟").tag(30); Text("提前 1 小时").tag(60); Text("提前 1 天").tag(1440)
-            }
+            ChoiceField(title: "日历提醒", symbol: "bell", selection: $alarm, options: ReminderOptions.choices(atStart: "开始时"))
             Divider()
             TextField("地点（选填）", text: $draft.location).textFieldStyle(.plain)
             TextField("备注（选填）", text: $draft.notes, axis: .vertical).lineLimit(2...3).textFieldStyle(.plain)
@@ -183,7 +177,7 @@ struct EditorHeading: View {
     let icon: String
     var body: some View {
         HStack(spacing: 14) {
-            Image(systemName: icon).font(.system(size: 24, weight: .light)).foregroundStyle(Style.accent).frame(width: 48, height: 48).glassPanel(radius: 15)
+            Image(systemName: icon).font(.system(size: 23, weight: .regular)).foregroundStyle(Style.orange).frame(width: 48, height: 48).background(Style.orangeTint, in: RoundedRectangle(cornerRadius: 15))
             VStack(alignment: .leading, spacing: 7) {
                 Text(title).font(.system(size: 20, weight: .semibold))
                 Text(subtitle).font(.system(size: 12)).foregroundStyle(.secondary)
