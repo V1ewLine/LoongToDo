@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="LoongTodo · 翻页的 L">
+  <defs>
+    <linearGradient id="blue" x2=".8" y2="1"><stop stop-color="#918FE0"/><stop offset="1" stop-color="#4054B3"/></linearGradient>
+    <linearGradient id="fold" x1="1" x2="0" y2="1"><stop stop-color="#E8EBFF"/><stop offset="1" stop-color="#B3C4FA"/></linearGradient>
+  </defs>
+  <rect x="80" y="80" width="864" height="864" rx="216" fill="url(#blue)"/>
+  <g transform="translate(80 80) scale(.84375)">
+    <path fill="white" d="M267 291 C267 262 290 239 319 239 L384 239 C413 239 435 262 435 291 L435 552 C435 597 456 621 498 621 C525 621 547 610 572 584 L691 459 C701 448 716 448 727 458 L802 524 C813 534 814 550 804 560 L681 691 C628 747 570 775 503 775 C355 775 267 691 267 555 Z"/>
+    <path fill="url(#fold)" d="M572 584 L691 459 C701 448 716 448 727 458 L802 524 C813 534 814 550 804 560 C776 585 732 617 683 608 C643 601 604 585 572 584 Z"/>
+  </g>
+</svg>
